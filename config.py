@@ -36,6 +36,13 @@ class Config(BaseSettings):
             return self.host_name_docker
         else:
             return self.host_name_default
+    @property
+    def BINANCE_history_trade_count(self) -> List[str]:
+        path = '/data/git-burlin/stack-orderflow/BINANCE_history_trade_count.json'
+        return json.loads(Path(path).read_text())
+    @property
+    def symbols_sorted_by_trade(self) -> List[str]:
+        return list(map(lambda x: x['symbol'], self.BINANCE_history_trade_count))
 
     class Config:
         env_file_encoding = "utf-8"
@@ -59,3 +66,5 @@ CONFIG = Config()
 
 if __name__ == "__main__":
     print(Config())
+    print(CONFIG.BINANCE_history_trade_count)
+    print(CONFIG.symbols_sorted_by_trade)
