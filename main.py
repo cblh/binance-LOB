@@ -151,6 +151,11 @@ async def handle_depth_stream(
                         asks_price,
                         symbol_full,
                     )
+                    logger.log_msg(
+                        f"LOB insert for {symbol_full}",
+                        LoggingLevel.INFO,
+                        symbol_full,
+                    )
                 if msg.type == aiohttp.WSMsgType.CLOSE:
                     break
         logger.log_msg(
