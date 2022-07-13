@@ -5,6 +5,11 @@ Inlcude all useful function and classes for reconstructing orderbook from databa
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Tuple
 from infi.clickhouse_orm.database import Database
+import sys
+import os
+sys.path.insert(
+    0, str(os.path.abspath(__file__ + "/../"))
+)  # Allows relative imports from model_aggtrade
 from model_aggtrade import AggtradeSteam
 from clickhouse_driver import Client
 from config import CONFIG
