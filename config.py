@@ -14,7 +14,9 @@ def json_config_settings_source(settings: BaseSettings) -> Dict[str, Any]:
     when reading `config.json`
     """
     encoding = settings.__config__.env_file_encoding
-    return json.loads(Path("config.json").read_text(encoding))
+    __DIR__ = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(__DIR__, "config.json")
+    return json.loads(Path(path).read_text(encoding))
 
 
 class Config(BaseSettings):
@@ -38,7 +40,7 @@ class Config(BaseSettings):
             return self.host_name_default
     @property
     def BINANCE_history_trade_count(self) -> List[str]:
-        path = '/data/git-burlin/stack-orderflow/BINANCE_history_trade_count.json'
+        path = 'BINANCE_history_trade_count.json'
         return json.loads(Path(path).read_text())
     @property
     def symbols_sorted_by_trade(self) -> List[str]:

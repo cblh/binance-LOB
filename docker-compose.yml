@@ -1,20 +1,10 @@
+version: "3"
 services:
-    clickhouse:
-        image: yandex/clickhouse-server
-        volumes:
-            - ./database:/var/lib/clickhouse
-        ulimits: 
-            nofile:
-                soft: 262144
-                hard: 262144
-        ports:
-            - "8123:8123"
-            - "9000:9000"
-        restart: always
-    main:
+    orderbook:
         build: .
         restart: always
-        depends_on:
-            - "clickhouse"
-        links: 
-            - "clickhouse"
+    aggtrade:
+        build:
+            context: .
+            dockerfile: dockerfile-aggtrade
+        restart: always

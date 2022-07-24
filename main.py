@@ -77,7 +77,7 @@ async def get_full_depth(
             bids_price=[pairs[0] for pairs in msg.bids],
             asks_quantity=[pairs[1] for pairs in msg.asks],
             asks_price=[pairs[0] for pairs in msg.asks],
-            symbol=asset_type.value + symbol,
+            symbol=symbol,
         )
         database.insert([snapshot])
 
@@ -149,7 +149,7 @@ async def handle_depth_stream(
                         bids_price,
                         asks_quantity,
                         asks_price,
-                        symbol_full,
+                        symbol,
                     )
                     logger.log_msg(
                         f"LOB insert for {symbol_full}",
@@ -173,11 +173,12 @@ async def setup():
     logger = Logger(database)
     dispatcher = DiffDepthStreamDispatcher(database, logger)
     logger.log_msg("Starting event loop...", LoggingLevel.INFO)
-    for symbol in CONFIG.symbols:
-        if "USD_" in symbol:
+    for symbol in CONFIG.symbols_sorted_by_trade:
+        if "USD_" in symbol or symbol.endswith('BUSD'):
+            inst = symbol if symbol.endswith('BUSD') else symbol[4:]
             loop.create_task(
                 handle_depth_stream(
-                    symbol[4:],
+                    inst,
                     session,
                     dispatcher,
                     database,

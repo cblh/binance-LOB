@@ -252,7 +252,8 @@ def orderbook_generator(
     client.execute(f"USE {database}")
 
     qs = (
-        DepthSnapshot.objects_in(db).filter(
+        DepthSnapshot.objects_in(db)
+        .filter(
             DepthSnapshot.symbol == symbol.upper(),
             DepthSnapshot.last_update_id > last_update_id,
         )
@@ -499,6 +500,9 @@ def partial_orderbook_generator(
 def lists_to_dict(price: List[float], quantity: List[float]) -> Dict[float, float]:
     return {p: q for p, q in zip(price, quantity)}
 
+def lists_to_zip_list(price: List[float], quantity: List[float]) -> Dict[float, float]:
+    return list(zip(price, quantity))
+
 
 def update_book(
     book: Dict[float, float], price: List[float], quantity: List[float]
@@ -531,7 +535,5 @@ def get_all_symbols() -> List[str]:
 
 
 if __name__ == "__main__":
-    datablocks = get_all_data_blocks("DOGEUSDT", 0)
-    for block in datablocks:
-        print(block)
-        print(block.ending_timestamp - block.beginning_timestamp)
+    for r in orderbook_generator(0, "AVAXBUSD", block_size=5000):
+        print(r)
