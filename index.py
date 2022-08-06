@@ -3,11 +3,11 @@ from time import sleep
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--TIMEOUT_SECOND',
-    help='TIMEOUT_SECOND')
+parser.add_argument('--timeout_second',
+    help='timeout_second')
 
 args = parser.parse_args()
-TIMEOUT_SECOND = args.TIMEOUT_SECOND if args.TIMEOUT_SECOND else 20
+TIMEOUT_SECOND = int(args.timeout_second) if args.timeout_second else 20
 
 
 # This is our shell command, executed in subprocess.
