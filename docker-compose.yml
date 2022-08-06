@@ -1,10 +1,17 @@
-version: "3"
+version: "3.9"
 services:
     orderbook:
         build: .
         restart: always
+        networks:
+            - clickhouse_default
     aggtrade:
         build:
             context: .
             dockerfile: dockerfile-aggtrade
         restart: always
+        networks:
+            - clickhouse_default
+networks:
+  clickhouse_default:
+    external: true
