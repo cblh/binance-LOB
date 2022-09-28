@@ -213,7 +213,7 @@ class PartialBook:
 
 
 def orderbook_generator(
-    last_update_id: int,
+    start: int,
     symbol: str,
     block_size: Optional[int] = 5_000,
     return_copy: bool = True,
@@ -255,7 +255,7 @@ def orderbook_generator(
         DepthSnapshot.objects_in(db)
         .filter(
             DepthSnapshot.symbol == symbol.upper(),
-            DepthSnapshot.last_update_id > last_update_id,
+            DepthSnapshot.timestamp > start,
         )
     ).order_by("timestamp")
 
@@ -361,9 +361,159 @@ def orderbook_generator(
                 symbol=symbol,
             )
 
+def orderbook_diff_depth_generator(
+    start: int,
+    symbol: str,
+    block_size: Optional[int] = 5_000,
+    return_copy: bool = True,
+) -> Generator[FullBook, None, None]:
+    """Generator to iterate reconstructed full orderbook from diff stream where
+    each element yielded are orderbook constructed from each stream update. The iterator
+    is exhausted when there is a gap in the diff depth stream (probably due to connection lost
+    while logging data), i.e. the previous final_update_id + 1 != first_update_id, or there is no
+    more diff stream in the database. Last recieved last_update_id can be used again to create new
+    generator to construct future orderbooks.
+
+    Args:
+        last_update_id (int): target update id to begin iterator. The first item
+            from the iterator will be the first snapshot with last update id that
+            is strictly greater than the one applied. Sucessive item will be constructed
+            with diff stream while a local orderbook is maintained.
+            See the link below for detail
+            https://binance-docs.github.io/apidocs/spot/en/#how-to-manage-a-local-order-book-correctly
+            for more detail.
+        symbol (str): symbol for orderbook to reconstruct
+        block_size (Optional[int], optional): pagniate size for executing SQL queries. None
+            means all data are retrived at once. Defaults to 5000.
+        return_copy (bool, optional): whether a copy of local orderbook is made when yield. Set to
+            false if orderbook yielded is used in a read only manner or local orderbook might be
+            corrupted, and could speedup the generator significantly. Defaults to true.
+
+    Raises:
+        ValueError: ignore
+
+    Yields:
+        FullBook: Full Orderbook object representing the reconstructed orderbook
+    """
+    database = CONFIG.db_name
+    db = Database(CONFIG.db_name, db_url=f"http://{CONFIG.host_name}:8123/")
+    client = Client(host=CONFIG.host_name)
+    client.execute(f"USE {database}")
+
+    qs = (
+        DepthSnapshot.objects_in(db)
+        .filter(
+            DepthSnapshot.symbol == symbol.upper(),
+            DepthSnapshot.timestamp > start,
+        )
+    ).order_by("timestamp")
+
+    sql_result = client.execute(qs.as_sql())
+    if len(sql_result) == 0:
+        return
+    snapshot = sql_result.pop(0)
+    next_snapshot = sql_result.pop(0) if sql_result else None
+    client.disconnect()
+    (
+        timestamp,
+        last_update_id,
+        bids_quantity,
+        bids_price,
+        asks_quantity,
+        asks_price,
+        _,
+    ) = snapshot
+
+    bids_book = lists_to_dict(bids_price, bids_quantity)
+    asks_book = lists_to_dict(asks_price, asks_quantity)
+
+    if return_copy:
+        yield FullBook(
+            timestamp=timestamp,
+            last_update_id=last_update_id,
+            bids=bids_book.copy(),
+            asks=asks_book.copy(),
+            symbol=symbol,
+        )
+    else:
+        yield FullBook(
+            timestamp=timestamp,
+            last_update_id=last_update_id,
+            bids=bids_book,
+            asks=asks_book,
+            symbol=symbol,
+        )
+
+    prev_final_update_id = None
+    for diff_stream in diff_depth_stream_generator(last_update_id, symbol, block_size):
+        # https://binance-docs.github.io/apidocs/spot/en/#how-to-manage-a-local-order-book-correctly
+        (
+            timestamp,
+            first_update_id,
+            final_update_id,
+            diff_bids_quantity,
+            diff_bids_price,
+            diff_asks_quantity,
+            diff_asks_price,
+            _,
+        ) = diff_stream
+
+        if (
+            prev_final_update_id is not None
+            and prev_final_update_id + 1 != first_update_id
+        ):
+            return
+        prev_final_update_id = final_update_id
+
+        if prev_final_update_id is None and (
+            last_update_id + 1 < first_update_id or last_update_id + 1 > final_update_id
+        ):
+            raise ValueError()
+
+        if next_snapshot is not None and (
+            first_update_id <= next_snapshot[1] + 1 <= final_update_id
+        ):
+            (
+                _,
+                _,
+                bids_quantity,
+                bids_price,
+                asks_quantity,
+                asks_price,
+                _,
+            ) = next_snapshot
+
+            bids_book.clear()
+            asks_book.clear()
+            bids_book.update(zip(bids_price, bids_quantity))
+            asks_book.update(zip(asks_price, asks_quantity))
+
+            next_snapshot = sql_result.pop(0) if sql_result else None
+
+            update_book(bids_book, diff_bids_price, diff_bids_quantity)
+            update_book(asks_book, diff_asks_price, diff_asks_quantity)
+
+            if return_copy:
+                yield FullBook(
+                    timestamp=timestamp,
+                    last_update_id=final_update_id,
+                    bids=bids_book.copy(),
+                    asks=asks_book.copy(),
+                    symbol=symbol,
+                )
+            else:
+                yield FullBook(
+                    timestamp=timestamp,
+                    last_update_id=final_update_id,
+                    bids=bids_book,
+                    asks=asks_book,
+                    symbol=symbol,
+                )
+        yield diff_stream
+
 
 def partial_orderbook_generator(
-    last_update_id: int, symbol: str, level: int = 10, block_size: Optional[int] = 5_000
+    start: int, symbol: str, level: int = 10, block_size: Optional[int] = 5_000
 ) -> Generator[PartialBook, None, None]:
     """Similar to orderbook_generator but instead of yielding a full constructed orderbook
     while maintaining a full local orderbook, a partial orderbook with level for both bids and
@@ -397,7 +547,7 @@ def partial_orderbook_generator(
     qs = (
         DepthSnapshot.objects_in(db).filter(
             DepthSnapshot.symbol == symbol.upper(),
-            DepthSnapshot.last_update_id > last_update_id,
+            DepthSnapshot.timestamp > start,
         )
     ).order_by("timestamp")
 
@@ -535,5 +685,9 @@ def get_all_symbols() -> List[str]:
 
 
 if __name__ == "__main__":
-    for r in orderbook_generator(0, "AVAXBUSD", block_size=5000):
+    # for r in orderbook_generator(0, "AVAXBUSD", block_size=5000):
+    #     print(r)
+    for r in partial_orderbook_generator(1660700336064512000, 'GALABUSD', block_size=5000):
         print(r)
+    # for r in orderbook_generator(0, 'GALABUSD', block_size=5000):
+    #     print(r)

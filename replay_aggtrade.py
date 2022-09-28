@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 
 def diff_depth_stream_generator(
-    timestamp: int, symbol: str, block_size: Optional[int] = None
+    start: int, symbol: str, block_size: Optional[int] = None
 ) -> Generator[
     Tuple[datetime, int, int, List[float], List[float], List[float], List[float], str],
     None,
@@ -33,7 +33,7 @@ def diff_depth_stream_generator(
         AggtradeSteam.objects_in(db)
         .filter(
             AggtradeSteam.symbol_id == symbol.upper(),
-            AggtradeSteam.time_exchange >= timestamp,
+            AggtradeSteam.time_exchange >= start,
         )
         .order_by("time_exchange")
     )
@@ -59,7 +59,7 @@ class Aggtrade:
     taker_side: str
 
 def aggtrade_generator(
-    last_update_id: int, symbol_id: str,  block_size: Optional[int] = 5_000
+    symbol_id: str, start: int, block_size: Optional[int] = 5_000,
 ) -> Generator[Aggtrade, None, None]:
     """Similar to orderbook_generator but instead of yielding a full constructed orderbook
     while maintaining a full local orderbook, a partial orderbook with level for both bids and
@@ -85,7 +85,7 @@ def aggtrade_generator(
     Yields:
         PartialBook: Partial Orderbook object representing reconstructed orderbook
     """
-    for diff_stream in diff_depth_stream_generator(last_update_id, symbol_id, block_size):
+    for diff_stream in diff_depth_stream_generator(start, symbol_id, block_size):
         (
             time_exchange,
             time_coinapi,

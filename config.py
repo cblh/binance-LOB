@@ -27,7 +27,7 @@ class Config(BaseSettings):
     full_fetch_limit: int = 1000
     stream_interval: int = 100
     log_to_console: bool = True
-    dispatcher_buffer_size: int = 1000
+    dispatcher_buffer_size: int = int(os.getenv("DISPATCHER_BUFFER_SIZE", 1))
     db_name: str = "archive"
     host_name_docker: str = "clickhouse"
     host_name_default: str = "localhost"

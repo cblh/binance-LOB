@@ -2,14 +2,14 @@ version: "3.9"
 services:
     orderbook:
         build: .
-        restart: always
+        restart: on-failure:3
         networks:
             - clickhouse_default
     aggtrade:
         build:
             context: .
             dockerfile: dockerfile-aggtrade
-        restart: always
+        restart: on-failure:3
         networks:
             - clickhouse_default
 networks:
