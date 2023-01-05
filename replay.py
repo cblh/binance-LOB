@@ -367,7 +367,8 @@ def orderbook_diff_depth_generator(
     block_size: Optional[int] = 5_000,
     return_copy: bool = True,
 ) -> Generator[FullBook, None, None]:
-    """Generator to iterate reconstructed full orderbook from diff stream where
+    """生成快照 full_book 和 diff_depth 以便于回测时间减少
+    Generator to iterate reconstructed full orderbook from diff stream where
     each element yielded are orderbook constructed from each stream update. The iterator
     is exhausted when there is a gap in the diff depth stream (probably due to connection lost
     while logging data), i.e. the previous final_update_id + 1 != first_update_id, or there is no
