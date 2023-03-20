@@ -25,9 +25,13 @@ class Config(BaseSettings):
     symbols: List[str]
     full_fetch_interval: int = 60 * 60
     full_fetch_limit: int = 1000
+    # 这个记录 LOB 订单簿 时间间隔 100/1000ms记录，这个是默认配置，实际上要看 config.json
     stream_interval: int = 100
+    # 这个记录 aggtrade 成交记录 时间间隔 100/1000ms记录，这里用了 1000ms 是因为数据库顶不住了分区太多了
+    aggtrade_stream_interval: int = 1000
     log_to_console: bool = True
-    dispatcher_buffer_size: int = int(os.getenv("DISPATCHER_BUFFER_SIZE", 1))
+    # 缓冲区大小 100个，是max_partitions_per_insert_block的默认极限，不然就很卡读取的时候
+    dispatcher_buffer_size: int = int(os.getenv("DISPATCHER_BUFFER_SIZE", 90))
     db_name: str = "archive"
     host_name_docker: str = "clickhouse"
     host_name_default: str = "localhost"
@@ -44,7 +48,7 @@ class Config(BaseSettings):
         return json.loads(Path(path).read_text())
     @property
     def symbols_sorted_by_trade(self) -> List[str]:
-        return list(map(lambda x: x['symbol'], self.BINANCE_history_trade_count))
+        return list(map(lambda x: x['full_symbol'], self.BINANCE_history_trade_count))
 
     class Config:
         env_file_encoding = "utf-8"

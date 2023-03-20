@@ -120,5 +120,5 @@ def get_all_symbols() -> List[str]:
 
 
 if __name__ == "__main__":
-    for r in aggtrade_generator(0, "AVAXBUSD", block_size=5000):
+    for r in aggtrade_generator(0, "USD_F_CFXUSDT", block_size=5000):
         print(r)

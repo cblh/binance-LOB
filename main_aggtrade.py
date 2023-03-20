@@ -37,7 +37,7 @@ class AggtradeStreamMsg(BaseModel):
 
 
 def aggtrade_stream_url(symbol: str, asset_type: AssetType) -> str:
-    speed = CONFIG.stream_interval
+    speed = CONFIG.aggtrade_stream_interval
     assert speed in (1000, 100), "speed must be 1000 or 100"
     symbol = symbol.lower()
     endpoint = f"{symbol}@aggTrade"
@@ -74,6 +74,10 @@ async def handle_aggtrade_stream(
 
                     timestamp = data_raw.E
                     symbol_id = data_raw.s
+
+
+                    symbol_full = asset_type.value + symbol
+                    
                     time_exchange = timestamp
                     time_coinapi = timestamp
                     uuid = data_raw.a
@@ -86,14 +90,14 @@ async def handle_aggtrade_stream(
                     dispatcher.insert(
                         time_exchange,
                         time_coinapi,
-                        symbol_id,
+                        symbol_full,
                         uuid,
                         price,
                         size,
                         taker_side,
                     )
                     logger.log_msg(
-                        f"aggtrade insert for {symbol}",
+                        f"aggtrade insert for {symbol_full}",
                         LoggingLevel.INFO,
                         symbol,
                     )
@@ -113,8 +117,8 @@ async def setup():
     dispatcher = AggtradeSteamDispatcher(database, logger)
     logger.log_msg("Starting event loop...", LoggingLevel.INFO)
     for symbol in CONFIG.symbols_sorted_by_trade:
-        if "USD_" in symbol or symbol.endswith('BUSD'):
-            inst = symbol if symbol.endswith('BUSD') else symbol[4:]
+        if "USD_" in symbol :
+            inst = symbol[6:]
             loop.create_task(
                 handle_aggtrade_stream(
                     inst,

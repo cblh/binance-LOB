@@ -67,6 +67,7 @@ async def get_full_depth(
         url = f"https://fapi.binance.com/fapi/v1/depth?symbol={symbol}&limit={limit}"
     elif asset_type == AssetType.COIN_M:
         url = f"https://dapi.binance.com/dapi/v1/depth?symbol={symbol}&limit={limit}"
+    symbol_full = asset_type.value + symbol
     async with session.get(url) as resp:
         resp_json = await resp.json()
         msg = DepthSnapshotMsg(**resp_json)
@@ -77,7 +78,7 @@ async def get_full_depth(
             bids_price=[pairs[0] for pairs in msg.bids],
             asks_quantity=[pairs[1] for pairs in msg.asks],
             asks_price=[pairs[0] for pairs in msg.asks],
-            symbol=symbol,
+            symbol=symbol_full,
         )
         database.insert([snapshot])
 
@@ -149,12 +150,12 @@ async def handle_depth_stream(
                         bids_price,
                         asks_quantity,
                         asks_price,
-                        symbol,
+                        symbol_full,
                     )
                     logger.log_msg(
                         f"LOB insert for {symbol_full}",
                         LoggingLevel.INFO,
-                        symbol_full,
+                        symbol,
                     )
                 if msg.type == aiohttp.WSMsgType.CLOSE:
                     break
@@ -174,8 +175,8 @@ async def setup():
     dispatcher = DiffDepthStreamDispatcher(database, logger)
     logger.log_msg("Starting event loop...", LoggingLevel.INFO)
     for symbol in CONFIG.symbols_sorted_by_trade:
-        if "USD_" in symbol or symbol.endswith('BUSD'):
-            inst = symbol if symbol.endswith('BUSD') else symbol[4:]
+        if "USD_" in symbol :
+            inst = symbol[6:]
             loop.create_task(
                 handle_depth_stream(
                     inst,
