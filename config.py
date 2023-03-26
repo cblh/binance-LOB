@@ -28,7 +28,7 @@ class Config(BaseSettings):
     # 这个记录 LOB 订单簿 时间间隔 100/1000ms记录，这个是默认配置，实际上要看 config.json
     stream_interval: int = 100
     # 这个记录 aggtrade 成交记录 时间间隔 100/1000ms记录，这里用了 1000ms 是因为数据库顶不住了分区太多了
-    aggtrade_stream_interval: int = 1000
+    aggtrade_stream_interval: int = 100
     log_to_console: bool = True
     # 缓冲区大小 100个，是max_partitions_per_insert_block的默认极限，不然就很卡读取的时候
     dispatcher_buffer_size: int = int(os.getenv("DISPATCHER_BUFFER_SIZE", 90))
