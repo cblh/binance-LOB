@@ -8,7 +8,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.8,<3.10"
 tqdm = "^4.64.0"
 sortedcontainers = "2.4.0"
 clickhouse-driver = "^0.2.0"
